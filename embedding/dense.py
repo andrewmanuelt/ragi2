@@ -1,3 +1,5 @@
+import torch 
+
 from abc import ABC, abstractmethod
 
 from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
@@ -41,30 +43,46 @@ class RetrieverAbstract(ABC):
     
 class DPRetriever(RetrieverAbstract):
     def _ctx_tokenizer(self):
-        return DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base', device_map='cuda')
+        return DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
 
     def _ctx_encoder(self):
-        return DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base', device_map='cuda')
-
+        model = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model.to(device)
+        
+        return model
+        
     def _q_tokenizer(self):
-        return DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base', device_map='cuda')
+        return DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
 
     def _q_encoder(self):
-        return DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base', device_map='cuda')
-
+        model = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = model.to(device)
+        
+        return model
+    
     def context_to_embedding(self, text : str):
         tokenizer = self._ctx_tokenizer()
         input = tokenizer(text, return_tensors='pt', truncation=True, max_length=256)
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        input = input.to(device)
+        
         encoder = self._ctx_encoder()
-        embedding = encoder(**input).pooler_output.detach().numpy()[0]
+        embedding = encoder(**input).pooler_output.cpu().detach().numpy()[0]
 
         return embedding
     
     def question_to_embedding(self, query):
         tokenizer = self._q_tokenizer()
         input = tokenizer(query, return_tensors='pt', truncation=True, max_length=256)
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        input = input.to(device)
+        
         encoder = self._q_encoder()
-        embedding = encoder(**input).pooler_output.detach().numpy()[0]
+        embedding = encoder(**input).pooler_output.cpu().detach().numpy()[0]
 
         return embedding
 
