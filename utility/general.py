@@ -1,3 +1,5 @@
+import torch
+
 from sklearn.metrics.pairwise import cosine_similarity
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -14,3 +16,7 @@ def splitter(text : str, chunk_size : int, chunk_overlap : int):
     )
     
     return splitter.split_text(text)
+
+def check_device():
+    print('this processing running over gpu' if torch.cuda.is_available() else 'this processing running over cpu') 
+    print('')

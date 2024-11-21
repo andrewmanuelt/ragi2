@@ -41,16 +41,16 @@ class RetrieverAbstract(ABC):
     
 class DPRetriever(RetrieverAbstract):
     def _ctx_tokenizer(self):
-        return DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        return DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base', device_map='cuda')
 
     def _ctx_encoder(self):
-        return DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+        return DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base', device_map='cuda')
 
     def _q_tokenizer(self):
-        return DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+        return DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base', device_map='cuda')
 
     def _q_encoder(self):
-        return DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+        return DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base', device_map='cuda')
 
     def context_to_embedding(self, text : str):
         tokenizer = self._ctx_tokenizer()
