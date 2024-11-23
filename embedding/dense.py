@@ -1,90 +1,58 @@
 import torch 
 
-from abc import ABC, abstractmethod
+from transformers import AutoModel, AutoTokenizer
 
-from transformers import DPRContextEncoder, DPRContextEncoderTokenizer
-from transformers import DPRQuestionEncoder, DPRQuestionEncoderTokenizer
-
-class RetrieverAbstract(ABC):
-    def __init__(self) -> None:
-        self._embedding_repo = ''
-    
-    @property
-    def embedding_repo(self):
-        return self._embedding_repo
-    
-    @embedding_repo.setter
-    def set_embedding_repo(self, embedding_repo):
-        self._embedding_repo = embedding_repo
-    
-    @abstractmethod
-    def _ctx_tokenizer(self):
-        pass
-    
-    @abstractmethod
-    def _ctx_encoder(self):
-        pass
-    
-    @abstractmethod
-    def _q_tokenizer(self):
-        pass
-
-    @abstractmethod
-    def _q_encoder(self):
-        pass
-    
-    @abstractmethod
-    def context_to_embedding(self, text):
-        pass
-    
-    @abstractmethod
-    def question_to_embedding(self, document):
-        pass
-    
-class DPRetriever(RetrieverAbstract):
-    def _ctx_tokenizer(self):
-        return DPRContextEncoderTokenizer.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
-
-    def _ctx_encoder(self):
-        model = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+class DPRetriever():    
+    def _device(self):
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu") 
+        
+    def context_model(self):
+        device = self._device()
+        
+        model = AutoModel.from_pretrained('sentence-transformers/facebook-dpr-ctx_encoder-single-nq-base')
         model = model.to(device)
-        
-        return model
-        
-    def _q_tokenizer(self):
-        return DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
-
-    def _q_encoder(self):
-        model = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        model = model.to(device)
-        
-        return model
+        return model 
     
-    def context_to_embedding(self, text : str):
-        tokenizer = self._ctx_tokenizer()
-        input = tokenizer(text, return_tensors='pt', truncation=True, max_length=256)
+    def context_tokenizer(self):
+        tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/facebook-dpr-ctx_encoder-single-nq-base')
+        return tokenizer
+    
+    def do_context(self, sentence, model, tokenizer):
+        device = self._device()
         
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        input = input.to(device)
+        encoded = tokenizer(sentence, padding=True, truncation=True, return_tensors='pt')
+        encoded = {key: tensor.to(device) for key, tensor in encoded.items()}
         
-        encoder = self._ctx_encoder()
-        embedding = encoder(**input).pooler_output.cpu().detach().numpy()[0]
-
+        with torch.no_grad():
+            model_output = model(**encoded)
+                
+        embedding = model_output[0][:,0]
+        embedding = embedding.cpu().tolist()
+        
         return embedding
     
-    def question_to_embedding(self, query):
-        tokenizer = self._q_tokenizer()
-        input = tokenizer(query, return_tensors='pt', truncation=True, max_length=256)
-        
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        input = input.to(device)
-        
-        encoder = self._q_encoder()
-        embedding = encoder(**input).pooler_output.cpu().detach().numpy()[0]
-
-        return embedding
-
-
     
+    def question_model(self):
+        device = self._device()
+        
+        model = AutoModel.from_pretrained('sentence-transformers/facebook-dpr-question_encoder-single-nq-base')
+        model = model.to(device)
+        return model 
+    
+    def question_tokenizer(self):
+        tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/facebook-dpr-question_encoder-single-nq-base')
+        return tokenizer
+    
+    def do_question(self, sentence, model, tokenizer):
+        device = self._device()
+        
+        encoded = tokenizer(sentence, padding=True, truncation=True, return_tensors='pt')
+        encoded = {key: tensor.to(device) for key, tensor in encoded.items()}
+        
+        with torch.no_grad():
+            model_output = model(**encoded)
+        
+        embedding = model_output[0][:,0]
+        embedding = embedding.cpu().tolist()
+        
+        return embedding
